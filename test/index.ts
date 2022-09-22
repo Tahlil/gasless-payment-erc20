@@ -1,5 +1,8 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+
+
+
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { erc20 } from "../typechain-types/@openzeppelin/contracts/token";
@@ -30,9 +33,64 @@ describe("Test suite", function () {
 
      console.log(await getBalance(erc20, owner.address));
      console.log(await getBalance(erc20, secondAccount.address));
-     
+
+     const provider = ethers.getDefaultProvider();
+
      let amount =  ethers.utils.parseUnits("100", "ether");
-     await expect(erc20.connect(secondAccount).transferFrom(owner.address, secondAccount.address, amount)).to.be.reverted;
+    await expect(erc20.connect(secondAccount).transferFrom(owner.address, secondAccount.address, amount)).to.be.reverted;
+
+     const transactionDeadline = Date.now() + 20 * 60;
+    const nonce = await erc20.nonces(owner.address);
+    const contractName = await erc20.name();
+    const EIP712Domain = [
+      { name: "name", type: "string" },
+      { name: "version", type: "string" },
+      { name: "chainId", type: "uint256" },
+      { name: "verifyingContract", type: "address" },
+    ];
+    const domain = {
+      name: contractName,
+      version: "1",
+      chainId: provider.network.chainId,
+      verifyingContract: erc20.address,
+    };
+    const Permit = [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+      { name: "tokenId", type: "uint256" },
+      { name: "nonce", type: "uint256" },
+      { name: "deadline", type: "uint256" },
+    ];
+
+    const ownerAddress = owner.address;
+    
+    const otherAddress =secondAccount.address;
+    const message = {
+      ownerAddress,
+      otherAddress,
+      amount, // tokenID would be amount for ERC20 permit function
+      nonce: nonce.toHexString(),
+      deadline: transactionDeadline,
+    };
+    const data = JSON.stringify({
+      types: {
+        EIP712Domain,
+        Permit,
+      },
+      domain,
+      primaryType: "Permit",
+      message,
+    });
+    
+    let signature = await owner.signMessage(data);
+  
+    const signData = ethers.utils.splitSignature(signature as string);
+    const { r, s, v } = signData;
+    console.log(r, s, v, transactionDeadline);
+    let tx = await erc20.permit(ownerAddress, otherAddress, amount, transactionDeadline, v, r, s);
+    await tx.wait();
+    
+    
     });
 
     // it("Should set the right owner", async function () {
