@@ -20,6 +20,10 @@
     "hardhat": "^2.11.2"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.7.3"
+    "@ethersproject/providers": "^5.7.1",
+    "@openzeppelin/contracts": "^4.7.3",
+    "ethers": "^5.7.1",
+    "i": "^0.3.7",
+    "npm": "^8.19.2"
   }
 }
