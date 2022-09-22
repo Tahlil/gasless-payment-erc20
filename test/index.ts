@@ -2,6 +2,7 @@ import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import { erc20 } from "../typechain-types/@openzeppelin/contracts/token";
 
 describe("Test suite", function () {
   // We define a fixture to reuse the same setup in every test.
@@ -16,6 +17,10 @@ describe("Test suite", function () {
     const erc20 = await ERC20.deploy();
 
     return { erc20, owner, otherAccount, secondAccount };
+  }
+
+  const getBalance = async (tokenContract: { balanceOf: (arg0: string) => any; }, address: string) => {
+    return Number(await tokenContract.balanceOf(address))/ 10**18;
   }
 
   describe("Deployment", function () {
