@@ -1,102 +1,95 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-
-
+import { signERC2612Permit } from "eth-permit";
 
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { erc20 } from "../typechain-types/@openzeppelin/contracts/token";
 import { UMToken } from "../typechain-types";
+const { waffle } = require("hardhat");
 
 describe("Test suite", function () {
   // We define a fixture to reuse the same setup in every test.
   // We use loadFixture to run this setup once, snapshot that state,
   // and reset Hardhat Network to that snapshot in every test.
   async function deployOneYearLockFixture() {
-
     // Contracts are deployed using the first signer/account by default
     const [owner, secondAccount, otherAccount] = await ethers.getSigners();
-    
+
     const ERC20 = await ethers.getContractFactory("UMToken");
-    const erc20 = await ERC20.deploy();
+    const erc20:UMToken = await ERC20.deploy();
 
     return { erc20, owner, otherAccount, secondAccount };
   }
 
   const getBalance = async (tokenContract: UMToken, address: string) => {
-    return Number(await tokenContract.balanceOf(address))/ 10**18;
-  }
+    return Number(await tokenContract.balanceOf(address)) / 10 ** 18;
+  };
 
-  const getAllowance = async (tokenContract: UMToken, ownerAddress: string, spenderAddress: string) => {
-    return Number(await tokenContract.allowance(ownerAddress, spenderAddress))/ 10**18;
-  }
+  const getAllowance = async (
+    tokenContract: UMToken,
+    ownerAddress: string,
+    spenderAddress: string
+  ) => {
+    return (
+      Number(await tokenContract.allowance(ownerAddress, spenderAddress)) /
+      10 ** 18
+    );
+  };
 
   describe("Deployment", function () {
     it.only("Should permit to transfer to other account", async function () {
-      const { erc20, owner, secondAccount } = await loadFixture(deployOneYearLockFixture);
-
-     console.log(await getBalance(erc20, owner.address));
-     console.log(await getBalance(erc20, secondAccount.address));
-
-     const provider = ethers.getDefaultProvider();
-
-     let amount =  ethers.utils.parseUnits("100", "ether");
-    await expect(erc20.connect(secondAccount).transferFrom(owner.address, secondAccount.address, amount)).to.be.reverted;
-
-     const transactionDeadline = Date.now() + 20 * 60;
-    const nonce = await erc20.nonces(owner.address);
-    const contractName = await erc20.name();
-    const EIP712Domain = [
-      { name: "name", type: "string" },
-      { name: "version", type: "string" },
-      { name: "chainId", type: "uint256" },
-      { name: "verifyingContract", type: "address" },
-    ];
-    const domain = {
-      name: contractName,
-      version: "1",
-      chainId: provider.network.chainId,
-      verifyingContract: erc20.address,
-    };
-    const Permit = [
-      { name: "owner", type: "address" },
-      { name: "spender", type: "address" },
-      { name: "tokenId", type: "uint256" },
-      { name: "nonce", type: "uint256" },
-      { name: "deadline", type: "uint256" },
-    ];
-
-    const ownerAddress = owner.address;
+      const { erc20, owner, secondAccount } = await loadFixture(
+        deployOneYearLockFixture
+      );
     
-    const otherAddress =secondAccount.address;
-    const message = {
-      ownerAddress,
-      otherAddress,
-      amount, // tokenID would be amount for ERC20 permit function
-      nonce: nonce.toHexString(),
-      deadline: transactionDeadline,
-    };
-    const data = JSON.stringify({
-      types: {
-        EIP712Domain,
-        Permit,
-      },
-      domain,
-      primaryType: "Permit",
-      message,
-    });
-    
-    let signature = await owner.signMessage(data);
-  
-    const signData = ethers.utils.splitSignature(signature as string);
-    const { r, s, v } = signData;
-    console.log(r, s, v, transactionDeadline);
-    let tx = await erc20.permit(ownerAddress, otherAddress, amount, transactionDeadline, v, r, s);
-    await tx.wait();
+      const provider = waffle.provider;
+      const ownerAddress = owner.address;
 
+      const otherAddress = secondAccount.address;
 
+      console.log(await getBalance(erc20, owner.address));
+      console.log(await getBalance(erc20, secondAccount.address));
 
-    
+      let amount = ethers.utils.parseUnits("100", "ether");
+      expect(await getAllowance(erc20, ownerAddress, otherAddress)).to.be.eq(0);
+
+      await expect(
+        erc20
+          .connect(secondAccount)
+          .transferFrom(owner.address, secondAccount.address, amount)
+      ).to.be.reverted;
+
+      const result = await signERC2612Permit(
+        provider,
+        erc20.address,
+        ownerAddress,
+        otherAddress,
+        amount.toString()
+      );
+
+      let tx = await erc20.connect(secondAccount).permit(
+        ownerAddress,
+        otherAddress,
+        amount,
+        result.deadline,
+        result.v,
+        result.r,
+        result.s
+      );
+      await tx.wait();
+      expect(await getAllowance(erc20, ownerAddress, otherAddress)).to.be.eq(100);
+
+      expect(await getBalance(erc20, otherAddress)).to.be.eq(0);
+
+      tx = await erc20
+      .connect(secondAccount)
+      .transferFrom(owner.address, secondAccount.address, amount);
+
+      await tx.wait();
+
+      expect(await getBalance(erc20, otherAddress)).to.be.eq(100);
+
     });
 
     // it("Should set the right owner", async function () {
