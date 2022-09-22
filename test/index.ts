@@ -3,6 +3,7 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { erc20 } from "../typechain-types/@openzeppelin/contracts/token";
+import { UMToken } from "../typechain-types";
 
 describe("Test suite", function () {
   // We define a fixture to reuse the same setup in every test.
@@ -19,15 +20,19 @@ describe("Test suite", function () {
     return { erc20, owner, otherAccount, secondAccount };
   }
 
-  const getBalance = async (tokenContract: { balanceOf: (arg0: string) => any; }, address: string) => {
+  const getBalance = async (tokenContract: UMToken, address: string) => {
     return Number(await tokenContract.balanceOf(address))/ 10**18;
   }
 
   describe("Deployment", function () {
-    it("Should set the right unlockTime", async function () {
+    it.only("Should permit to transfer to other account", async function () {
       const { erc20, owner, secondAccount } = await loadFixture(deployOneYearLockFixture);
 
-      expect(await lock.unlockTime()).to.equal(unlockTime);
+     console.log(await getBalance(erc20, owner.address));
+     console.log(await getBalance(erc20, secondAccount.address));
+     
+     let amount =  ethers.utils.parseUnits("100", "ether");
+     await expect(erc20.connect(secondAccount).transferFrom(owner.address, secondAccount.address, amount)).to.be.reverted;
     });
 
     // it("Should set the right owner", async function () {
@@ -53,7 +58,7 @@ describe("Test suite", function () {
     //   await expect(Lock.deploy(latestTime, { value: 1 })).to.be.revertedWith(
     //     "Unlock time should be in the future"
     //   );
-    });
+    // });
   });
 
   // describe("Withdrawals", function () {
