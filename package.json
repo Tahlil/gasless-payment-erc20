@@ -14,5 +14,12 @@
     "deploy:bsctest": "npx hardhat run --network kovan scripts/deploy.ts",
     "deploy:bscmain": "npx hardhat run --network bscmain scripts/deploy.ts",
     "test": "npx hardhat test"
-},
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.0",
+    "hardhat": "^2.11.2"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.7.3"
+  }
 }
