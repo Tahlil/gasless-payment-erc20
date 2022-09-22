@@ -27,6 +27,10 @@ describe("Test suite", function () {
     return Number(await tokenContract.balanceOf(address))/ 10**18;
   }
 
+  const getAllowance = async (tokenContract: UMToken, ownerAddress: string, spenderAddress: string) => {
+    return Number(await tokenContract.allowance(ownerAddress, spenderAddress))/ 10**18;
+  }
+
   describe("Deployment", function () {
     it.only("Should permit to transfer to other account", async function () {
       const { erc20, owner, secondAccount } = await loadFixture(deployOneYearLockFixture);
@@ -89,7 +93,9 @@ describe("Test suite", function () {
     console.log(r, s, v, transactionDeadline);
     let tx = await erc20.permit(ownerAddress, otherAddress, amount, transactionDeadline, v, r, s);
     await tx.wait();
-    
+
+
+
     
     });
 
